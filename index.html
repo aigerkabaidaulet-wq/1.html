@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>7-сынып Информатика тесті - iTest</title>
+    <!-- Салют анимациясы үшін кітапхана -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #0046b8;
+            --secondary-color: #00c853;
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 800px;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        h2 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background-color: #00338d;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .question-card {
+            margin-bottom: 25px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+
+        .options label {
+            display: block;
+            font-weight: normal;
+            margin: 8px 0;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .options label:hover {
+            background: #eef2f7;
+        }
+
+        .timer {
+            font-size: 18px;
+            font-weight: bold;
+            color: #d32f2f;
+            text-align: right;
+            margin-bottom: 15px;
+        }
+
+        .result-box {
+            text-align: center;
+        }
+
+        .result-score {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--secondary-color);
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 1. Тіркеу формасы (Аты-жөні, сыныбы, күні) -->
+    <div id="login-section">
+        <h2>7-сынып Информатика тесті (iTest стилі)</h2>
+        <div class="form-group">
+            <label for="student-name">Оқушының аты-жөні:</label>
+            <input type="text" id="student-name" placeholder="Мысалы: Дильназ Ерланқызы">
+        </div>
+        <div class="form-group">
+            <label for="student-class">Сыныбы:</label>
+            <input type="text" id="student-class" placeholder="Мысалы: 7 «Б»">
+        </div>
+        <div class="form-group">
+            <label for="test-date">Күні:</label>
+            <input type="date" id="test-date">
+        </div>
+        <div class="form-group">
+            <label for="test-variant">Нұсқаны таңдаңыз:</label>
+            <select id="test-variant">
+                <option value="1">1-нұсқа</option>
+                <option value="2">2-нұсқа</option>
+                <option value="3">3-нұсқа</option>
+                <option value="4">4-нұсқа</option>
+                <option value="5">5-нұсқа</option>
+            </select>
+        </div>
+        <button class="btn" onclick="startTest()">Тестті бастау</button>
+    </div>
+
+    <!-- 2. Тест тапсыру бөлімі -->
+    <div id="test-section" class="hidden">
+        <div class="timer" id="timer">Уақыт: 10:00</div>
+        <div id="questions-container"></div>
+        <button class="btn" onclick="submitTest()">Тестті аяқтау</button>
+    </div>
+
+    <!-- 3. Нәтиже және Excel жүктеу бөлімі -->
+    <div id="result-section" class="hidden result-box">
+        <h2>Тест нәтижесі</h2>
+        <p id="result-student-info" style="font-size: 18px;"></p>
+        <div class="result-score" id="result-score"></div>
+        <button class="btn" style="background-color: #2e7d32;" onclick="exportToExcel()">Excel-ге жүктеу (.xls)</button>
+        <button class="btn" onclick="location.reload()" style="background-color: #616161;">Қайта тапсыру</button>
+    </div>
+</div>
+
+<script>
+    // Ағымдағы күнді автоматты түрде қою
+    document.getElementById('test-date').valueAsDate = new Date();
+
+    // 5 нұсқа, әрқайсысында 10 сұрақ (көрсетілген тақырыптар бойынша)
+    const testDatabase = {
+        1: [
+            { q: "Компьютерді және есептік жазбаны қорғау үшін ең сенімді құпиясөз қалай құрылады?", options: ["Тек қана туған жылмен", "Әріптер, сандар және арнайы символдардың араласуымен", "Қарапайым 123456 кодымен", "Өз атыңызбен"], correct: 1 },
+            { q: "Екі сатылы аутентификация дегеніміз не?", options: ["Компьютерді екі рет өшіру", "Құпиясөзбен қатар телефонға немесе поштаға келетін қосымша кодты енгізу", "Екі антивирус орнату", "Электрондық поштаны екі рет ашу"], correct: 1 },
+            { q: "Антивирустық программалық жасақтаманың негізгі міндеті қандай?", options: ["Интернет жылдамдығын арттыру", "Компьютерді зиянды программалардан қорғау және тазарту", "Мәтін теру", "Ойын ойнау"], correct: 1 },
+            { q: "Деректерді мұрағаттау (архивирование) не үшін қажет?", options: ["Файлдардың көлемін кішірейтіп, резервтік көшірмесін сақтау үшін", "Компьютер экранын жарық қылу үшін", "Вирус жұқтыру үшін", "Интернетті өшіру үшін"], correct: 0 },
+            { q: "Ақпараттың ең кіші өлшем бірлігі қалай аталады?", options: ["Байт", "Бит", "Килобайт", "Мегабайт"], correct: 1 },
+            { q: "1 Байт қанша битке тең?", options: ["4 бит", "8 бит", "1024 бит", "16 бит"], correct: 1 },
+            { q: "Алфавиттік тәсілді қолданып ақпарат көлемін анықтағанда қуаттылығы N = 32 болатын алфавиттің бір символы қанша бит орын алады?", options: ["3 бит", "4 бит", "5 бит", "8 бит"], correct: 2 },
+            { q: "Көлемі 10 символдан тұратын мәтін 8 биттік кодтау кестесінде (ASCII) қанша байт орын алады?", options: ["10 байт", "80 байт", "5 байт", "16 байт"], correct: 0 },
+            { q: "Монохромды (ақ-қара) кескінді кодтау кезінде 1 пиксельдің түсі қандай битпен өрнектеледі?", options: ["1 бит", "8 бит", "16 бит", "32 бит"], correct: 0 },
+            { q: "Unicode стандартты кодтау жүйесінде бір символ үшін қанша байт (немесе бит) қолданылады?", options: ["1 байт (8 бит)", "2 байт (16 бит)", "4 байт", "0.5 байт"], correct: 1 }
+        ],
+        2: [
+            { q: "Ақпараттық қауіпсіздікте есептік жазбаны бөгде адамдардан қорғаудың тиімді әдісі?", options: ["Құпия сөзді баршаға айту", "Екі сатылы аутентификацияны қосу", "Компьютерді мүлде өшірмеу", "Антивирусты өшіру"], correct: 1 },
+            { q: "Құпиясөздің сенімділігін арттыру үшін қандай шарт орындалуы тиіс?", options: ["Ұзындығы 8 символдан кем болмауы және әріп пен сан араласуы", "Тек өз туған күніңіз болуы", "Атыңыздың бірінші әрпі", "Бос орын қалдыру"], correct: 0 },
+            { q: "Деректерді мұрағаттау бағдарламаларының мысалы:", options: ["WinRAR немесе 7-Zip", "MS Word", "Google Chrome", "Paint"], correct: 0 },
+            { q: "1 Килобайт (Кб) қанша Байтқа тең?", options: ["1000 Байт", "1024 Байт", "512 Байт", "2048 Байт"], correct: 1 },
+            { q: "Ақпаратты үлкен өлшем бірлігінен кіші өлшем бірлікке ауыстыру үшін не істейміз?", options: ["1024-ке көбейтеміз", "1024-ке бөлеміз", "Қосамыз", "Азайтамыз"], correct: 0 },
+            { q: "Алфавит қуаттылығы N = 64 болса, бір символдың салмағы (i) неге тең?", options: ["5 бит", "6 бит", "7 бит", "8 бит"], correct: 1 },
+            { q: "Хабарлама 20 символдан тұрады, әр символ 8 бит. Хабарламаның жалпы көлемі қанша?", options: ["160 байт", "20 байт", "160 бит", "10 байт"], correct: 2 },
+            { q: "ASCII кестесінде барлығы неше символ кодталады?", options: ["128 немесе 256", "32", "64", "1024"], correct: 0 },
+            { q: "Монохромды кескінді кодтау кезінде ақ түс компьютер жадында қандай санмен белгіленеді?", options: ["0", "1", "2", "255"], correct: 1 },
+            { q: "Unicode жүйесі көптеген тілдердің әріптерін қолдау үшін неліктен енгізілді?", options: ["ASCII кестесіндегі орын жеткіліксіз болғандықтан", "Компьютерді баяулату үшін", "Ойын ашу үшін", "Интернетті күшейту үшін"], correct: 0 }
+        ],
+        3: [
+            { q: "Компьютердегі маңызды файлдардың көшірмесін жоғалтып алмас үшін қандай әрекет жасау керек?", options: ["Деректерді мұрағаттау (резервтік көшірме жасау)", "Мониторды тазалау", "Антивирусты өшіру", "Интернетті ажырату"], correct: 0 },
+            { q: "Антивирус базасын жиі жаңартудың маңызы неде?", options: ["Жаңа шыққан қауіптер мен вирустардан қорғану үшін", "Компьютердің дизайнын өзгерту үшін", "Ойын жылдамдығын арттыру үшін", "Музыка тыңдау үшін"], correct: 0 },
+            { q: "Көлемі 5 Мб болатын файлды Кб-қа қалай айналдырамыз?", options: ["5 * 1024 Кб", "5 / 1024 Кб", "5 * 1000 Кб", "Бөлінбейді"], correct: 0 },
+            { q: "Ақпарат көлемінің өсу ретімен дұрыс орналасқан қатарын табыңыз:", options: ["Байт, Килобайт, Мегабайт, Гигабайт", "Мегабайт, Байт, Бит, Килобайт", "Бит, Байт, Мегабайт, Килобайт", "Гигабайт, Мегабайт, Байт, Бит"], correct: 0 },
+            { q: "Алфавит қуаттылығы N = 256 болған жағдайда, алфавиттің 1 символы қанша бит орын алады?", options: ["4 бит", "6 бит", "8 бит", "16 бит"], correct: 2 },
+            { q: "«Информатика» сөзі (11 әріп) 8 биттік кодтауда қанша байтты алады?", options: ["11 байт", "88 байт", "22 байт", "5 байт"], correct: 0 },
+            { q: "Монохромды кескін өлшемі 10x10 пиксель болса, оның ақпараттық көлемі қанша бит?", options: ["100 бит", "10 бит", "80 бит", "1000 бит"], correct: 0 },
+            { q: "ASCII кестесіндегі әрбір символ жадта қанша орын алады?", options: ["1 байт", "2 байт", "4 байт", "8 байт"], correct: 0 },
+            { q: "Электрондық пошта немесе әлеуметтік желідегі парақшаға кіргенде екі сатылы аутентификация қалай жұмыс істейді?", options: ["Пароль + телефонға келген код", "Тек пароль", "Тек лақап ат", "Автоматты түрде кіру"], correct: 0 },
+            { q: "Мәтіндік ақпаратты кодтау мен декодтау дегеніміз не?", options: ["Таңбаларды шартты кодтарға айналдыру және кері қайтару", "Сурет салу", "Музыка жазу", "Ойын коды"], correct: 0 }
+        ],
+        4: [
+            { q: "Компьютер қауіпсіздігін қамтамасыз ету мақсатында антивирус орнатылмаса не болуы мүмкін?", options: ["Компьютер зиянды бағдарламалардан зақымданып, мәлімет жоғалуы мүмкін", "Компьютер жылдам жұмыс істейді", "Ештеңе болмайды", "Интернет жақсарады"], correct: 0 },
+            { q: "Сенімді құпиясөздің ең төменгі ұзындығы қанша таңбадан тұрғаны жөн?", options: ["3-4 таңба", "8 және одан көп таңба", "1 таңба", "Шектеу жоқ"], correct: 1 },
+            { q: "1 Гигабайт (Гб) шамамен қанша Мегабайтқа (Мб) тең?", options: ["1024 Мб", "1000 Мб", "512 Мб", "2048 Мб"], correct: 0 },
+            { q: "Ақпарат көлемін анықтау формулсы (Хартли формуласы):", options: ["N = 2^i", "I = K * i", "E = mc^2", "S = vt"], correct: 0 },
+            { q: "Қуаттылығы N = 16 болатын алфавиттің бір символының салмағы (i) қанша?", options: ["2 бит", "4 бит", "8 бит", "16 бит"], correct: 1 },
+            { q: "Көлемі 3 Кб болатын мәтін неше байтқа тең?", options: ["3000 байт", "3072 байт", "1536 байт", "300 байт"], correct: 1 },
+            { q: "Unicode жүйесінде әрбір символ стандартты түрде қанша орын алады?", options: ["2 байт (16 бит)", "1 байт", "8 бит", "4 байт"], correct: 0 },
+            { q: "Монохромды кескін пиксельдерінің қаракөлеңкесі нені білдіреді?", options: ["Тек ақ және қара түстердің болуын", "Түрлі-түсті палитраны", "Дыбыстың болуын", "Анимацияны"], correct: 0 },
+            { q: "Деректерді мұрағаттау барысында негізгі файлға не болады?", options: ["Көлемі кішірейтіліп архивтік контейнерге сақталады", "Толығымен жойылады", "Басқа компьютерге көшіріледі", "Өзгермейді"], correct: 0 },
+            { q: "Екі сатылы аутентификация арқылы бөгде адам сіздің аккаунтыңызға кіре ала ма?", options: ["Құпиясөзді білсе де, екінші кодты білмесе кіре алмайды", "Оңай кіреді", "Пароль жеткілікті", "Шектеу жоқ"], correct: 0 }
+        ],
+        5: [
+            { q: "Антивирустық бағдарлама қалай жұмыс істейді?", options: ["Компьютер файлдарын тексеріп, вирустарды тауып жояды немесе карантинге қояды", "Сурет өңдейді", "Видео монтажтайды", "Презентация жасайды"], correct: 0 },
+            { q: "Жеке қауіпсіздік ережелеріне қайсысы кірмейді?", options: ["Құпиясөзді әлеуметтік желіде барлығына жариялау", "Күмәнді сілтемелерді ашпау", "Антивирус қолдану", "Екі сатылы аутентификацияны қосу"], correct: 0 },
+            { q: "2048 Байт қанша Килобайтқа тең?", options: ["1 Кб", "2 Кб", "4 Кб", "1024 Кб"], correct: 1 },
+            { q: "Алфавиттік әдіспен мәтіннің ақпараттық көлемін табу формуласы:", options: ["I = K * i", "N = 2^i", "V = S * t", "A = b + c"], correct: 0 },
+            { q: "Әліпби қуаттылығы 128 болатын алфавиттің бір символы неше битке тең?", options: ["7 бит", "8 бит", "6 бит", "5 бит"], correct: 0 },
+            { q: "Компьютер жадындағы 4 Мб ақпаратты Кб-қа аударыңыз:", options: ["4096 Кб", "4000 Кб", "2048 Кб", "8192 Кб"], correct: 0 },
+            { q: "ASCII мен Unicode басты айырмашылығы неде?", options: ["Unicode символдарды көбірек (барлық әлем тілдерін) қамтиды", "ASCII әлдеқайда үлкен", "Айрмашылығы жоқ", "ASCII тек сурет сақтайды"], correct: 0 },
+            { q: "Монохромды кескінді кодтау кезінде кара түс (1 пиксель) жадта қалай көрінеді?", options: ["1 немесе 0 мәнімен", "Түсті палитрамен", "Дыбыс толқынымен", "Мәтінмен"], correct: 0 },
+            { q: "Құпиясөзді қауіпсіз сақтау үшін не істеу керек?", өтініш: ["Ешкімге көрсетпеу және арнайы менеджерлерде сақтау", "Дәптерге жазып көшеге тастау", "Достарға тарату", "Барлық жерге бірдей пароль қою"], correct: 0 },
+            { q: "Мәтіндік ақпаратты декодтау дегеніміз мағынасы жағынан нені білдіреді?", options: ["Кодталған биттер тізбегін адам оқи алатын символдарға қайта айналдыру", "Мәтінді жою", "Компьютерді өшіру", "Файлды мұрағаттау"], correct: 0 }
+        ]
+    };
+
+    let currentUser = {};
+    let currentQuestions = [];
+    let timerInterval;
+    let timeLeft = 600; // 10 минут
+
+    function startTest() {
+        const name = document.getElementById('student-name').value.trim();
+        const className = document.getElementById('student-class').value.trim();
+        const date = document.getElementById('test-date').value;
+        const variant = document.getElementById('test-variant').value;
+
+        if (!name || !className) {
+            alert("Өтінемін, аты-жөніңіз бен сыныбыңызды толық жазыңыз!");
+            return;
+        }
+
+        currentUser = { name, className, date, variant };
+        currentQuestions = testDatabase[variant];
+
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('test-section').classList.remove('hidden');
+
+        renderQuestions();
+        startTimer();
+    }
+
+    function renderQuestions() {
+        const container = document.getElementById('questions-container');
+        container.innerHTML = '';
+
+        currentQuestions.forEach((item, index) => {
+            let card = document.createElement('div');
+            card.className = 'question-card';
+            
+            let optionsHtml = '';
+            item.options.forEach((opt, optIndex) => {
+                optionsHtml += `
+                    <label>
+                        <input type="radio" name="q${index}" value="${optIndex}" onclick="triggerEmotion(${optIndex === item.correct})">
+                        ${opt}
+                    </label>
+                `;
+            });
+
+            card.innerHTML = `
+                <p><b>Сұрақ ${index + 1}:</b> ${item.q}</p>
+                <div class="options">${optionsHtml}</div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // Дұрыс / қате жауап берген кездегі эмоциялық салют анимациясы
+    function triggerEmotion(isCorrect) {
+        if (isCorrect) {
+            confetti({
+                particleCount: 40,
+                spread: 50,
+                origin: { y: 0.8 },
+                colors: ['#00c853', '#69f0ae', '#b9f6ca']
+            });
+        } else {
+            confetti({
+                particleCount: 15,
+                spread: 30,
+                origin: { y: 0.9 },
+                colors: ['#d32f2f', '#ff8a80']
+            });
+        }
+    }
+
+    function startTimer() {
+        const timerDisplay = document.getElementById('timer');
+        timerInterval = setInterval(() => {
+            let minutes = Math.floor(timeLeft / 60);
+            let seconds = timeLeft % 60;
+            timerDisplay.textContent = `Уақыт: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                alert("Уақыт аяқталды!");
+                submitTest();
+            }
+            timeLeft--;
+        }, 1000);
+    }
+
+    function submitTest() {
+        clearInterval(timerInterval);
+        let score = 0;
+
+        currentQuestions.forEach((item, index) => {
+            const selected = document.querySelector(`input[name="q${index}"]:checked`);
+            if (selected && parseInt(selected.value) === item.correct) {
+                score++;
+            }
+        });
+
+        document.getElementById('test-section').classList.add('hidden');
+        document.getElementById('result-section').classList.remove('hidden');
+
+        document.getElementById('result-student-info').innerHTML = `
+            Оқушы: <b>${currentUser.name}</b> (${currentUser.className})<br>
+            Нұсқа: <b>${currentUser.variant}-нұсқа</b> | Күні: <b>${currentUser.date}</b>
+        `;
+        document.getElementById('result-score').textContent = `Сіздің ұпайыңыз: ${score} / 10`;
+
+        // Қорытынды сәттегі үлкен салют
+        confetti({
+            particleCount: 150,
+            spread: 100,
+            origin: { y: 0.6 }
+        });
+
+        currentUser.score = score;
+    }
+
+    // Нәтижені Excel (.xls) форматында жүктеу функциясы
+    function exportToExcel() {
+        let htmlData = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head><meta charset="UTF-8"></head>
+            <body>
+                <table border="1">
+                    <tr>
+                        <th>Оқушының аты-жөні</th>
+                        <th>Сыныбы</th>
+                        <th>Нұсқасы</th>
+                        <th>Жинаған ұпайы</th>
+                        <th>Күні</th>
+                    </tr>
+                    <tr>
+                        <td>${currentUser.name}</td>
+                        <td>${currentUser.className}</td>
+                        <td>${currentUser.variant}-нұсқа</td>
+                        <td>${currentUser.score} / 10</td>
+                        <td>${currentUser.date}</td>
+                    </tr>
+                </table>
+            </body>
+            </html>
+        `;
+
+        let blob = new Blob([htmlData], { type: 'application/vnd.ms-excel' });
+        let url = window.URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentUser.name}_${currentUser.className}_тест_нәтижесі.xls`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+</script>
+
+</body>
+</html>
